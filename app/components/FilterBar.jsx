@@ -20,7 +20,7 @@ const FilterBar = ({ tags, filters, setFilters }) => {
       <div className="relative w-full">
         <button
           onClick={() => setDisplayTags(!displayTags)}
-          className="w-full bg-[#323232] rounded-lg p-2 text-[#878787] flex justify-between items-center capitalize transition-colors hover:bg-[#3a3a3a]"
+          className="w-full bg-[#323232] rounded-lg py-2 px-4 text-[#878787] flex justify-between items-center capitalize transition-colors hover:bg-[#3a3a3a]"
         >
           <span className={` ${tag ? "text-white" : "text-[#878787]"}`}>
             {tag || "Tag"}

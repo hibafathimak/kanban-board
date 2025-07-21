@@ -25,6 +25,7 @@ const TaskForm = ({
   console.log(formData);
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (formData.title.trim() === "") return;
 
     if (taskToEdit) {
       editTask(formData);
