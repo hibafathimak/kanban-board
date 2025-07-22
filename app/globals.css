@@ -5,3 +5,31 @@ body {
   color: #ededed;
   font-family: Inter;
 }
+
+::-webkit-scrollbar {
+  width: 3px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #374151; 
+  border-radius: 8px; 
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+.no-scroll {
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+
+}
+
+.no-scroll::-webkit-scrollbar {
+  visibility: hidden;
+}

@@ -22,7 +22,7 @@ const TaskForm = ({
       setFormData(taskToEdit);
     }
   }, [taskToEdit]);
-  console.log(formData);
+  
   const handleSubmit = (e) => {
     e.preventDefault();
     if (formData.title.trim() === "") return;
@@ -43,7 +43,7 @@ const TaskForm = ({
         { title: "Tag", key: "tag" },
       ].map((item, index) => (
         <Input
-          key={index}
+          key={item.key}
           placeholder={item.title}
           value={formData[item.key]}
           onChange={(e) => {
