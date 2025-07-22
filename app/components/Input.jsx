@@ -1,13 +1,19 @@
 import React from "react";
 
-const Input = ({ placeholder, onChange = () => {},value ,className }) => {
+const Input = ({
+  placeholder,
+  onChange = () => {},
+  value,
+  className,
+  type,
+}) => {
   return (
     <input
       onChange={onChange}
-      type="text"
+      type={type ? type : "text"}
       name={placeholder}
       className={` rounded-lg py-2 px-4 w-full outline-0 ${className}`}
-      value={value? value :""}
+      value={value ? value : ""}
       placeholder={placeholder}
     />
   );
