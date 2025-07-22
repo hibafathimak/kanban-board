@@ -204,7 +204,7 @@ export default function Home() {
             );
           })}
 
-          <div className="bg-[#414141] p-4 flex items-center gap-4 h-fit rounded-lg min-w-[290px]">
+          <div className="bg-[#414141] p-4 flex items-center justify-between gap-4 h-fit rounded-lg min-w-[290px]">
             {displayAddInput ? (
               <>
                 <Input
