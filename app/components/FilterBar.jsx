@@ -16,7 +16,7 @@ const FilterBar = ({ tags, filters, setFilters }) => {
   };
 
   return (
-    <div className=" w-full rounded-lg p-4 bg-[#262626] grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+    <div className=" w-full rounded-lg p-5 bg-[#262626] grid gap-4 sm:grid-cols-2 md:grid-cols-3 relative">
       <div className="flex gap-2">
         <Input
           className="bg-[#323232]  placeholder:text-[#878787] "
@@ -32,7 +32,7 @@ const FilterBar = ({ tags, filters, setFilters }) => {
             className="cursor-pointer"
             onClick={() => setFilters({ ...filters, searchTerm: "" })}
           >
-            <XIcon size={12} />
+            <XIcon size={14} />
           </button>
         )}
       </div>
@@ -79,13 +79,13 @@ const FilterBar = ({ tags, filters, setFilters }) => {
               className="cursor-pointer"
               onClick={() => setFilters({ ...filters, tag: "" })}
             >
-              <XIcon size={12} />
+              <XIcon size={14} />
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex gap-3 items-center w-full">
+      <div className="flex gap-3 items-center w-full ">
         <Input
           className="bg-[#323232]  placeholder:text-[#878787] flex-1 "
           type="text"
@@ -101,15 +101,16 @@ const FilterBar = ({ tags, filters, setFilters }) => {
             className="cursor-pointer"
             onClick={() => setFilters({ ...filters, color: "" })}
           >
-            <XIcon size={12} />
+            <XIcon size={14} />
           </button>
         )}
-        { (searchTerm || tag || color) &&
-          <button className="cursor-pointer" onClick={resetFilters}>
+ 
+      </div>
+             { (searchTerm || tag || color) &&
+          <button className="cursor-pointer text-xs right-4 absolute top-0 mt-1 " onClick={resetFilters}>
             Clear All
           </button>
         }
-      </div>
     </div>
   );
 };
