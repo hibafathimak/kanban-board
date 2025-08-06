@@ -2,19 +2,21 @@ import { useState } from "react";
 import { PenIcon, TrashIcon } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import axios from "axios";
 
 const Card = ({
   taskDetails,
-  deleteTask,
   setDisplayForm,
   editTask,
+  fetchTasks,
   isDragOverlay = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
-  const textColor = taskDetails?.color === "#ffffff" || taskDetails?.color === "#FFFFFF"
-    ? "text-gray-800"
-    : "text-white";
+  const textColor =
+    taskDetails?.color === "#ffffff" || taskDetails?.color === "#FFFFFF"
+      ? "text-gray-800"
+      : "text-white";
 
   const {
     attributes,
@@ -23,14 +25,28 @@ const Card = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ 
+  } = useSortable({
     id: taskDetails.id,
-    disabled: isDragOverlay
+    disabled: isDragOverlay,
   });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+  };
+  const token = JSON.parse(localStorage.getItem("token"));
+
+  const handleDeleteTask = async (taskId) => {
+    const response = await axios.delete(
+      `http://localhost:5000/api/tasks/delete-task/${taskId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+   fetchTasks()
   };
   return (
     <div
@@ -53,7 +69,7 @@ const Card = ({
           <div className={`flex gap-2 items-center ${textColor}`}>
             <TrashIcon
               className="cursor-pointer"
-              onClick={() => deleteTask(taskDetails.id)}
+              onClick={() => handleDeleteTask(taskDetails.id)}
               size={12}
             />
             <PenIcon

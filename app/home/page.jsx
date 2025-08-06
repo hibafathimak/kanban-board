@@ -18,81 +18,83 @@ import { PlusIcon } from "lucide-react";
 import Input from "../components/Input";
 import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
+import axios from "axios";
 
 export default function Home() {
-  const { user } = useSelector((state) => state.user);
-  console.log(user);
+  const [token, setToken] = useState(null);
 
   const router = useRouter();
   useEffect(() => {
-    if (!user) {
-      router.replace("/login");
+    const token = localStorage.getItem("token");
+    setToken(JSON.parse(localStorage.getItem("token")));
+    if (token) {
+      router.replace("/home");
     }
-  }, [user]);
-  
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      title: "Twilio integration",
-      description:
-        "Create new note via SMS. Support text, audio, links, and media.",
-      category: "Backlog",
-      tag: "",
-      color: "#C340A1",
-    },
-    {
-      id: 2,
-      title: "Task 2",
-      description: "Markdown shorthand converts to formatting",
-      category: "Backlog",
-      tag: "New Note",
-      color: "#6A6DCD",
-    },
-    {
-      id: 3,
-      title: "Tablet view",
-      description: "",
-      category: "To Do",
-      tag: "",
-      color: "#DA3A3A",
-    },
-  ]);
+  }, []);
+
+  const [tasks, setTasks] = useState([]);
+  const [columns, setColumns] = useState([]);
+
+  useEffect(() => {
+    fetchTasks();
+    fetchCategories();
+  }, []);
+
+  const fetchTasks = async () => {
+    const test = JSON.parse(localStorage.getItem("token"));
+    const response = await axios.get(
+      "http://localhost:5000/api/tasks/get-tasks",
+      {
+        headers: {
+          Authorization: `Bearer ${test}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    setTasks(response.data.task);
+  };
+
+  const fetchCategories = async () => {
+    const token = JSON.parse(localStorage.getItem("token"));
+    const response = await axios.get(
+      "http://localhost:5000/api/category/get-categories",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    setColumns(response.data.categories);
+  };
+
   const [updatedTask, setUpdatedTask] = useState(null);
   const [filters, setFilters] = useState({
     searchTerm: "",
     tag: "",
     color: "",
   });
-  const [columns, setColumns] = useState([
-    "Backlog",
-    "To Do",
-    "In Progress",
-    "Designed",
-  ]);
-  const [updatedColumn, setUpdatedColumn] = useState("");
   const [displayAddInput, setDisplayAddInput] = useState(false);
   const [newList, setNewList] = useState("");
 
-  const handleAddList = (newColumn) => {
+  const handleAddList = async (newColumn) => {
     if (newColumn.trim() === "") return;
+    const response = await axios.post(
+      "http://localhost:5000/api/category/create",
+      {
+        category: newColumn,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    fetchCategories();
     setColumns([...columns, newColumn]);
+    setNewList("");
     setDisplayAddInput(false);
-  };
-
-  const editListName = (updatedColumn, index) => {
-    if (updatedColumn.trim() === "") return;
-    const category = columns[index];
-    console.log(category);
-    setTasks(
-      tasks.map((t) =>
-        t.category === category ? { ...t, category: updatedColumn } : t
-      )
-    );
-    setColumns(
-      columns.map((col, index) =>
-        col === category ? (columns[index] = updatedColumn) : col
-      )
-    );
   };
 
   const tags = [
@@ -100,22 +102,6 @@ export default function Home() {
       tasks.map((item) => item.tag?.trim().toLowerCase()).filter((tag) => tag)
     ),
   ];
-
-  const handleAddTask = (task) => {
-    const id = Date.now() + Math.floor(Math.random() * 100);
-    setTasks([...tasks, { id, ...task }]);
-  };
-
-  const handleDeleteTask = (taskId) => {
-    setTasks(tasks.filter((task) => task.id !== taskId));
-  };
-
-  const handleEditTask = (updatedTask) => {
-    setTasks(
-      tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
-    );
-    setUpdatedTask(null);
-  };
 
   const filteredTasks = tasks.filter(
     (task) =>
@@ -133,37 +119,77 @@ export default function Home() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
   const activeTask = tasks.find((task) => task.id === activeId);
-  const handleDragStart = (e) => setActiveId(e.active.id);
+  const handleDragStart = (e) => {
+    setActiveId(e.active.id);
+  };
 
-  const handleDragEnd = ({ active, over }) => {
+  const handleDragEnd = async ({ active, over }) => {
     setActiveId(null);
     if (!over) return;
 
     const activeTask = tasks.find((task) => task.id === active.id);
     const overTask = tasks.find((task) => task.id === over.id);
 
-    if (columns.includes(over.id)) {
+    if (!activeTask) return;
+
+    const columnIds = columns.map((col) => col.id);
+
+    // Dropping on column
+    if (columnIds.includes(over.id)) {
       if (activeTask.category !== over.id) {
-        setTasks(
-          tasks.map((task) =>
-            task.id === active.id ? { ...task, category: over.id } : task
-          )
-        );
+        try {
+          const response = await axios.put(
+            `http://localhost:5000/api/tasks/update-task/${activeTask.id}`,
+            { ...activeTask, category: over.id },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          setTasks((prevTasks) =>
+            prevTasks.map((task) =>
+              task.id === active.id ? { ...task, category: over.id } : task
+            )
+          );
+        } catch (error) {
+          console.error("Failed to update task category:", error);
+        }
       }
       return;
     }
 
+    // Dropping on a task in different column
     if (overTask && activeTask.category !== overTask.category) {
-      setTasks(
-        tasks.map((task) =>
-          task.id === active.id
-            ? { ...task, category: overTask.category }
-            : task
-        )
-      );
+      try {
+        const response = await axios.put(
+          `http://localhost:5000/api/tasks/update-task/${activeTask.id}`,
+          { ...activeTask, category: overTask.category },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        setTasks((prevTasks) =>
+          prevTasks.map((task) =>
+            task.id === active.id
+              ? { ...task, category: overTask.category }
+              : task
+          )
+        );
+      } catch (error) {
+        console.error("Failed to update task category:", error);
+      }
       return;
     }
 
+    // Reordering
+    console.log(overTask.sortOrder);
+    console.log(activeTask.sortOrder);
     if (overTask && activeTask.category === overTask.category) {
       const category = activeTask.category;
       const sameColumnTasks = tasks.filter(
@@ -174,13 +200,31 @@ export default function Home() {
       const oldIndex = sameColumnTasks.findIndex(
         (task) => task.id === active.id
       );
+      console.log("oldIndex", oldIndex);
       const newIndex = sameColumnTasks.findIndex((task) => task.id === over.id);
+      console.log("newIndex", newIndex);
+      if (oldIndex !== newIndex) {
+        const reordered = arrayMove(sameColumnTasks, oldIndex, newIndex);
+        setTasks([...others, ...reordered]);
 
-      const reordered = arrayMove(sameColumnTasks, oldIndex, newIndex);
-      setTasks([...others, ...reordered]);
+        try {
+          const response = await axios.put(
+            'http://localhost:5000/api/tasks/update-sortOrder',
+            { taskId: activeTask.id, newIndex },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          console.log(response);
+        } catch (error) {
+          console.error(error);
+        }
+      }
     }
   };
-
 
   return (
     <DndContext
@@ -197,22 +241,18 @@ export default function Home() {
         <div className="w-full flex gap-3 mt-24">
           {columns?.map((heading, index) => {
             const columnTasks = filteredTasks.filter(
-              (task) => task.category === heading
+              (task) => task.category === heading.id
             );
             return (
               <Column
                 updatedTask={updatedTask}
                 setUpdatedTask={setUpdatedTask}
-                editTask={handleEditTask}
-                addTask={handleAddTask}
-                deleteTask={handleDeleteTask}
-                key={index}
+                key={heading.id}
                 heading={heading}
                 tasks={columnTasks}
                 setTasks={setTasks}
-                updatedColumn={updatedColumn}
-                setUpdatedColumn={setUpdatedColumn}
-                editListName={() => editListName(updatedColumn, index)}
+                fetchTasks={fetchTasks}
+                fetchCategories={fetchCategories}
               />
             );
           })}

@@ -1,14 +1,9 @@
 import React, { useEffect, useState } from "react";
 import Input from "./Input";
 import ColorInput from "./ColorInput";
+import axios from "axios";
 
-const TaskForm = ({
-  setDisplayForm,
-  category,
-  addTask,
-  taskToEdit,
-  editTask,
-}) => {
+const TaskForm = ({ setDisplayForm, category, taskToEdit,fetchTasks }) => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -16,27 +11,65 @@ const TaskForm = ({
     category,
     color: "#ffffff",
   });
+  const [updatedTask, setUpdatedTask] = useState(null);
+  const token = JSON.parse(localStorage.getItem("token"));
 
+  const handleAddTask = async (task) => {
+    // const id = Date.now() + Math.floor(Math.random() * 100);
+    // console.log(task);
+    const response = await axios.post(
+      "http://localhost:5000/api/tasks/create-task",
+      task,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    // console.log(response);
+    fetchTasks();
+  };
+
+  const handleEditTask = async (updatedTask) => {
+    const response = await axios.put(
+      `http://localhost:5000/api/tasks/update-task/${updatedTask.id}`,
+      updatedTask,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    fetchTasks();
+    setUpdatedTask(null);
+  };
   useEffect(() => {
     if (taskToEdit) {
       setFormData(taskToEdit);
     }
   }, [taskToEdit]);
-  
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (formData.title.trim() === "") return;
 
     if (taskToEdit) {
-      editTask(formData);
+      handleEditTask(formData);
     } else {
-      addTask(formData);
+      handleAddTask(formData);
     }
     setDisplayForm(false);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-[#414141] rounded-lg p-2 mt-4">
+    <form
+      onSubmit={(e) => {
+        handleSubmit(e);
+      }}
+      className="bg-[#414141] rounded-lg p-2 mt-4"
+    >
       {[
         { title: "Title", key: "title" },
         { title: "Description", key: "description" },
