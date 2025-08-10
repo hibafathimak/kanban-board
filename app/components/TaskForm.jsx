@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import Input from "./Input";
 import ColorInput from "./ColorInput";
 import axios from "axios";
+import { makePrivateAPIcall } from "../utils/axiosInstance";
 
-const TaskForm = ({ setDisplayForm, category, taskToEdit,fetchTasks }) => {
+const TaskForm = ({ setDisplayForm, category, taskToEdit }) => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -17,32 +18,19 @@ const TaskForm = ({ setDisplayForm, category, taskToEdit,fetchTasks }) => {
   const handleAddTask = async (task) => {
     // const id = Date.now() + Math.floor(Math.random() * 100);
     // console.log(task);
-    const response = await axios.post(
-      "http://localhost:5000/api/tasks/create-task",
+    const response = await makePrivateAPIcall("POST",
+      "tasks/create-task",
       task,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
     );
     // console.log(response);
-    fetchTasks();
   };
 
   const handleEditTask = async (updatedTask) => {
-    const response = await axios.put(
-      `http://localhost:5000/api/tasks/update-task/${updatedTask.id}`,
+    const response = await makePrivateAPIcall("PUT",
+      `tasks/update-task/${updatedTask.id}`,
       updatedTask,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
     );
-    fetchTasks();
+    console.log(response)
     setUpdatedTask(null);
   };
   useEffect(() => {

@@ -10,7 +10,7 @@ import {
   pointerWithin,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Column from "../components/Column";
 import FilterBar from "../components/FilterBar";
 import Card from "../components/Card";
@@ -19,11 +19,26 @@ import Input from "../components/Input";
 import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import {
+  makePrivateAPIcall,
+  makePrivateGetAPIcall,
+  makePublicAPIcall,
+} from "../utils/axiosInstance";
+import makeGetAPICall from "../hooks/makeGetAPICall";
 
 export default function Home() {
   const [token, setToken] = useState(null);
-
+  const [tasks, setTasks] = useState([]);
+  const [columns, setColumns] = useState([]);
+  const [updatedTask, setUpdatedTask] = useState(null);
+  const [displayAddInput, setDisplayAddInput] = useState(false);
+  const [newList, setNewList] = useState("");
   const router = useRouter();
+  const [filters, setFilters] = useState({
+    searchTerm: "",
+    tag: "",
+    color: "",
+  });
   useEffect(() => {
     const token = localStorage.getItem("token");
     setToken(JSON.parse(localStorage.getItem("token")));
@@ -31,65 +46,42 @@ export default function Home() {
       router.replace("/home");
     }
   }, []);
-
-  const [tasks, setTasks] = useState([]);
-  const [columns, setColumns] = useState([]);
-
+  const tasksData = makeGetAPICall("tasks/get-tasks");
+  const categoriesData = makeGetAPICall("category/get-categories");
   useEffect(() => {
-    fetchTasks();
-    fetchCategories();
-  }, []);
+  if (tasksData?.task) {
+    setTasks(tasksData.task);
+  }
+  if (categoriesData?.categories) {
+    setColumns(categoriesData.categories);
+  }
+}, [tasksData?.task, categoriesData?.categories]);
 
-  const fetchTasks = async () => {
-    const test = JSON.parse(localStorage.getItem("token"));
-    const response = await axios.get(
-      "http://localhost:5000/api/tasks/get-tasks",
-      {
-        headers: {
-          Authorization: `Bearer ${test}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    setTasks(response.data.task);
+  // const [tasks, setTasks] = useState(() => tasksData?.task || []);
+  // const [columns, setColumns] = useState(
+  //   () => categoriesData?.categories || []
+  // );
+
+  // useMemo(() => {
+  //   if (tasksData?.task) setTasks(tasksData.task);
+  //   if (categoriesData?.categories) setColumns(categoriesData.categories);
+  // }, [tasksData?.task, categoriesData?.categories]);
+
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
   };
-
-  const fetchCategories = async () => {
-    const token = JSON.parse(localStorage.getItem("token"));
-    const response = await axios.get(
-      "http://localhost:5000/api/category/get-categories",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    setColumns(response.data.categories);
-  };
-
-  const [updatedTask, setUpdatedTask] = useState(null);
-  const [filters, setFilters] = useState({
-    searchTerm: "",
-    tag: "",
-    color: "",
-  });
-  const [displayAddInput, setDisplayAddInput] = useState(false);
-  const [newList, setNewList] = useState("");
 
   const handleAddList = async (newColumn) => {
     if (newColumn.trim() === "") return;
-    const response = await axios.post(
-      "http://localhost:5000/api/category/create",
+    await makePrivateAPIcall(
+      "POST",
+      "category/create",
       {
         category: newColumn,
       },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
+      headers
     );
     fetchCategories();
     setColumns([...columns, newColumn]);
@@ -99,11 +91,11 @@ export default function Home() {
 
   const tags = [
     ...new Set(
-      tasks.map((item) => item.tag?.trim().toLowerCase()).filter((tag) => tag)
+      tasks?.map((item) => item.tag?.trim().toLowerCase()).filter((tag) => tag)
     ),
   ];
 
-  const filteredTasks = tasks.filter(
+  const filteredTasks = tasks?.filter(
     (task) =>
       (!filters.searchTerm ||
         task.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
@@ -118,19 +110,31 @@ export default function Home() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
-  const activeTask = tasks.find((task) => task.id === activeId);
+
+  const activeTask = tasks?.find((task) => task.id === activeId);
   const handleDragStart = (e) => {
     setActiveId(e.active.id);
   };
-
-  const handleDragEnd = async ({ active, over }) => {
+  const handleDragEnd = async ({ active, over, ...test }) => {
     setActiveId(null);
     if (!over) return;
 
-    const activeTask = tasks.find((task) => task.id === active.id);
-    const overTask = tasks.find((task) => task.id === over.id);
+    console.log(test);
+    console.log("over", over);
 
+    let category = columns.filter((col) => col.id === over.id)?.[0]?.id;
+    if (!category) {
+      category = tasks?.filter((task) => task.id === over.id)?.[0]?.category;
+    }
+
+    const activeTask = tasks?.find((task) => task.id === active.id);
     if (!activeTask) return;
+
+    const sameColumnTasks = tasks?.filter((task) => task.category === category);
+    const overTask = sameColumnTasks.find((task) => task.id === over.id);
+
+    console.log("activeTask", activeTask);
+    console.log("overTask", overTask);
 
     const columnIds = columns.map((col) => col.id);
 
@@ -138,22 +142,30 @@ export default function Home() {
     if (columnIds.includes(over.id)) {
       if (activeTask.category !== over.id) {
         try {
-          const response = await axios.put(
-            `http://localhost:5000/api/tasks/update-task/${activeTask.id}`,
-            { ...activeTask, category: over.id },
+          const response = await makePrivateAPIcall(
+            "PUT",
+            `tasks/update-task/${activeTask.id}`,
             {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
+              ...activeTask,
+              category: over.id,
+              newSortOrder: sameColumnTasks.length + 1,
+            },
+            headers
           );
 
           setTasks((prevTasks) =>
             prevTasks.map((task) =>
-              task.id === active.id ? { ...task, category: over.id } : task
+              task.id === active.id
+                ? {
+                    ...task,
+                    category: over.id,
+                    sortOrder: sameColumnTasks.length + 1,
+                  }
+                : task
             )
           );
+
+          console.log(response);
         } catch (error) {
           console.error("Failed to update task category:", error);
         }
@@ -163,23 +175,35 @@ export default function Home() {
 
     // Dropping on a task in different column
     if (overTask && activeTask.category !== overTask.category) {
+      const overTaskIndex = sameColumnTasks.findIndex(
+        (task) => task.id === over.id
+      );
+      const newSortOrder = overTaskIndex + 1;
+
       try {
-        const response = await axios.put(
-          `http://localhost:5000/api/tasks/update-task/${activeTask.id}`,
-          { ...activeTask, category: overTask.category },
+        const response = await makePrivateAPIcall(
+          "PUT",
+          `tasks/update-task/${activeTask.id}`,
           {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
+            ...activeTask,
+            category: overTask.category,
+            newSortOrder: newSortOrder,
+          },
+          headers
         );
+
         setTasks((prevTasks) =>
-          prevTasks.map((task) =>
-            task.id === active.id
-              ? { ...task, category: overTask.category }
-              : task
-          )
+          prevTasks
+            .map((task) =>
+              task.id === active.id
+                ? {
+                    ...task,
+                    category: overTask.category,
+                    sortOrder: newSortOrder,
+                  }
+                : task
+            )
+            .sort((a, b) => a.sortOrder - b.sortOrder)
         );
       } catch (error) {
         console.error("Failed to update task category:", error);
@@ -187,40 +211,33 @@ export default function Home() {
       return;
     }
 
-    // Reordering
-    console.log(overTask.sortOrder);
-    console.log(activeTask.sortOrder);
+    // Reordering within the same column
     if (overTask && activeTask.category === overTask.category) {
       const category = activeTask.category;
-      const sameColumnTasks = tasks.filter(
+      const sameColumnTasks = tasks?.filter(
         (task) => task.category === category
       );
-      const others = tasks.filter((task) => task.category !== category);
+      const others = tasks?.filter((task) => task.category !== category);
 
       const oldIndex = sameColumnTasks.findIndex(
         (task) => task.id === active.id
       );
-      console.log("oldIndex", oldIndex);
       const newIndex = sameColumnTasks.findIndex((task) => task.id === over.id);
-      console.log("newIndex", newIndex);
+
       if (oldIndex !== newIndex) {
         const reordered = arrayMove(sameColumnTasks, oldIndex, newIndex);
         setTasks([...others, ...reordered]);
 
         try {
-          const response = await axios.put(
-            'http://localhost:5000/api/tasks/update-sortOrder',
-            { taskId: activeTask.id, newIndex },
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
+          const response = await makePrivateAPIcall(
+            "PUT",
+            "tasks/update-sortOrder",
+            { taskId: activeTask.id, newIndex, category },
+            headers
           );
           console.log(response);
         } catch (error) {
-          console.error(error);
+          console.error("Failed to update sort order:", error);
         }
       }
     }
@@ -238,7 +255,7 @@ export default function Home() {
           <FilterBar tags={tags} setFilters={setFilters} filters={filters} />
         </div>
 
-        <div className="w-full flex gap-3 mt-24">
+        <div className="w-full flex flex-wrap gap-3 mt-[200px] sm:mt-36 md:mt-24">
           {columns?.map((heading, index) => {
             const columnTasks = filteredTasks.filter(
               (task) => task.category === heading.id
@@ -251,13 +268,11 @@ export default function Home() {
                 heading={heading}
                 tasks={columnTasks}
                 setTasks={setTasks}
-                fetchTasks={fetchTasks}
-                fetchCategories={fetchCategories}
               />
             );
           })}
 
-          <div className="bg-[#414141] p-4 flex items-center justify-between gap-4 h-fit rounded-lg min-w-[290px]">
+          <div className="bg-[#414141] p-3 flex flex-row items-center justify-between gap-4 h-fit rounded-lg w-full sm:min-w-[290px] sm:max-w-[290px]">
             {displayAddInput ? (
               <>
                 <Input

@@ -16,7 +16,6 @@ const Column = ({
   deleteTask,
   updatedTask,
   setUpdatedTask,
-  fetchTasks,
   fetchCategories,
 }) => {
   // console.log(heading)
@@ -63,7 +62,7 @@ const Column = ({
   return (
     <div
       ref={setNodeRef}
-      className="bg-[#262626]  rounded-xl p-4 h-fit group w-[290px] max-h-[calc(100vh-140px)] overflow-y-hidden"
+      className="bg-[#262626] rounded-xl p-3 sm:p-4 h-fit group w-full sm:w-[280px] md:w-[290px] lg:w-[320px] sm:flex-shrink-0  group  max-h-[calc(100vh-140px)] overflow-y-hidden"
     >
       <div className="flex items-center justify-between">
         {displayEditInput ? (
@@ -113,16 +112,17 @@ const Column = ({
           strategy={verticalListSortingStrategy}
         >
           {tasks?.length > 0 ? (
-            tasks?.map((item, index) => (
-              <Card
-                key={item.id}
-                taskDetails={item}
-                deleteTask={deleteTask}
-                fetchTasks={fetchTasks}
-                setDisplayForm={setDisplayForm}
-                editTask={() => setUpdatedTask(item)}
-              />
-            ))
+            tasks?.map((item, index) => {
+              return (
+                <Card
+                  key={item.id}
+                  taskDetails={item}
+                  deleteTask={deleteTask}
+                  setDisplayForm={setDisplayForm}
+                  editTask={() => setUpdatedTask(item)}
+                />
+              );
+            })
           ) : (
             <p className="my-2 font-light text-sm text-[#878787]">
               No Tasks Yet
@@ -130,11 +130,10 @@ const Column = ({
           )}
         </SortableContext>
 
-        {displayForm && (
+        {displayForm && updatedTask?.category === heading.id && (
           <TaskForm
             setDisplayForm={setDisplayForm}
             category={heading.id}
-            fetchTasks={fetchTasks}
             taskToEdit={updatedTask}
           />
         )}

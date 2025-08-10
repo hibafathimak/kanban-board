@@ -2,13 +2,12 @@ import { useState } from "react";
 import { PenIcon, TrashIcon } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import axios from "axios";
+import { makePrivateAPIcall } from "../utils/axiosInstance";
 
 const Card = ({
   taskDetails,
   setDisplayForm,
   editTask,
-  fetchTasks,
   isDragOverlay = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -37,8 +36,8 @@ const Card = ({
   const token = JSON.parse(localStorage.getItem("token"));
 
   const handleDeleteTask = async (taskId) => {
-    const response = await axios.delete(
-      `http://localhost:5000/api/tasks/delete-task/${taskId}`,
+    const response = await makePrivateAPIcall("DELETE",
+      `tasks/delete-task/${taskId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -46,7 +45,6 @@ const Card = ({
         },
       }
     );
-   fetchTasks()
   };
   return (
     <div

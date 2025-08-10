@@ -98,7 +98,7 @@ const AuthPage = () => {
 
         <button
           type="submit"
-          className="w-full bg-[#6B6FF4] text-white font-semibold py-2 rounded-lg "
+          className="w-full bg-[#6B6FF4] text-white font-semibold py-2 rounded-lg cursor-pointer"
         >
           {isSignIn ? "Login" : "Register"}
         </button>
