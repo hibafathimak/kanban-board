@@ -8,55 +8,38 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import Input from "./Input";
-import axios from "axios";
+import { makePrivateAPIcall } from "../utils/axiosInstance";
+import category from "../api/category";
+import { DELETE, PUT } from "../constants";
 
-const Column = ({
-  heading,
-  tasks,
-  deleteTask,
-  updatedTask,
-  setUpdatedTask,
-  fetchCategories,
-}) => {
-  // console.log(heading)
+const Column = ({ heading, tasks, setFetchData }) => {
   const { setNodeRef } = useDroppable({ id: heading.id });
-  const token = JSON.parse(localStorage.getItem("token"));
   const [displayForm, setDisplayForm] = useState(false);
+  const [updatedTask, setUpdatedTask] = useState(null);
   const [displayEditInput, setDisplayEditInput] = useState(false);
   const [updatedColumn, setUpdatedColumn] = useState("");
 
   const editListName = async () => {
     if (updatedColumn.trim() === "") return;
-    const response = await axios.put(
-      `http://localhost:5000/api/category/update/${heading.id}`,
+    await makePrivateAPIcall(
+      PUT,
+      `${category.update}/${heading.id}`,
       { updatedCategory: updatedColumn },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+      (res) => {
+        setUpdatedColumn("")
+        setDisplayEditInput(false);
+        setFetchData(res);
       }
     );
-    fetchCategories();
-    setDisplayEditInput(false);
   };
 
   const deleteCategory = async () => {
-    try {
-      const response = await axios.delete(
-        `http://localhost:5000/api/category/delete/${heading.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      console.log(response);
-      fetchCategories();
-    } catch (error) {
-      console.log(error);
-    }
+    await makePrivateAPIcall(
+      DELETE,
+      `${category.delete}/${heading.id}`,{},(res) => {
+        setFetchData(res);
+      }
+    );
   };
 
   return (
@@ -117,9 +100,9 @@ const Column = ({
                 <Card
                   key={item.id}
                   taskDetails={item}
-                  deleteTask={deleteTask}
                   setDisplayForm={setDisplayForm}
                   editTask={() => setUpdatedTask(item)}
+                  setFetchData={setFetchData}
                 />
               );
             })
@@ -130,11 +113,12 @@ const Column = ({
           )}
         </SortableContext>
 
-        {displayForm && updatedTask?.category === heading.id && (
+        {displayForm && (
           <TaskForm
             setDisplayForm={setDisplayForm}
             category={heading.id}
             taskToEdit={updatedTask}
+            setFetchData={setFetchData}
           />
         )}
       </div>

@@ -9,9 +9,9 @@ const Page = () => {
 
   useEffect(() => {
     if (user) {
-      router.replace("/dashboard"); 
+      router.replace("/pages/home"); 
     } else {
-      router.replace("/login"); 
+      router.replace("/pages/login"); 
     }
   }, [user]);
 

@@ -1,28 +1,26 @@
 import { useEffect, useState } from "react";
 import { axiosInstance } from "../utils/axiosInstance";
+import { GET } from "../constants";
 
-const useFetchData = (url) => {
+const useFetchData = (url, refetchFlags) => {
   const [data, setData] = useState(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const token = JSON.parse(localStorage.getItem("token"));
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      };
-      try {
-        const response = await axiosInstance("GET", url, {}, headers);
-        if (response?.status === 200) {
-          setData(response?.data);
-        }
-      } catch (error) {
-        console.log(error);
-      }
+  const fetchData = async () => {
+    const token = JSON.parse(localStorage.getItem("token"));
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     };
-
+    try {
+      await axiosInstance(GET, url, {}, headers, (res) => {
+        setData(res?.data);
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  useEffect(() => {
     fetchData();
-  }, [url]);
+  }, [url, refetchFlags]);
 
   return data;
 };

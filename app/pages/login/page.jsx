@@ -1,10 +1,11 @@
 "use client";
 import React, { useState } from "react";
-import Input from "../components/Input";
+import Input from "../../components/Input";
 import { useDispatch } from "react-redux";
-import { login } from "../../store/userSlice";
+import { login } from "../../../store/userSlice";
 import { useRouter } from "next/navigation";
-import axios from "axios";
+import { makePublicAPIcall } from "../../utils/axiosInstance";
+import { POST } from "@/app/constants";
 
 const AuthPage = () => {
   const [userData, setUserData] = useState({
@@ -19,30 +20,37 @@ const AuthPage = () => {
   const [isSignIn, setIsSignIn] = useState(true);
 
   const handleSubmit = async (e) => {
-    // debugger;
     if (!userData.email || !userData.password) return;
     e.preventDefault();
     let response;
     if (isSignIn) {
-      response = await axios.post("http://localhost:5000/api/users/login", {
-        email: userData.email,
-        password: userData.password,
-      });
-      if (response.status === 200) {
-        localStorage.setItem("token", JSON.stringify(response.data.token));
-        dispatch(login(userData));
-        router.push("/home");
-      }
+      response = await makePublicAPIcall(
+       POST,
+        "users/login",
+        {
+          email: userData.email,
+          password: userData.password,
+        },
+        (response) => {
+          localStorage.setItem("token", JSON.stringify(response.data.token));
+          dispatch(login(userData));
+          router.push("/pages/home");
+        }
+      );
     } else {
-      response = await axios.post("http://localhost:5000/api/users/register", {
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        email: userData.email,
-        password: userData.password,
-      });
-      if (response.status === 200) {
-        setIsSignIn(false)
-      }
+      response = await makePublicAPIcall(
+        POST,
+        "users/register",
+        {
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          password: userData.password,
+        },
+        () => {
+          setIsSignIn(false);
+        }
+      );
     }
   };
   return (

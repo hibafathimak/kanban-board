@@ -11,29 +11,25 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useEffect, useMemo, useState } from "react";
-import Column from "../components/Column";
-import FilterBar from "../components/FilterBar";
-import Card from "../components/Card";
+import Column from "../../components/Column";
+import FilterBar from "../../components/FilterBar";
+import Card from "../../components/Card";
 import { PlusIcon } from "lucide-react";
-import Input from "../components/Input";
-import { useSelector } from "react-redux";
+import Input from "../../components/Input";
 import { useRouter } from "next/navigation";
-import axios from "axios";
-import {
-  makePrivateAPIcall,
-  makePrivateGetAPIcall,
-  makePublicAPIcall,
-} from "../utils/axiosInstance";
-import makeGetAPICall from "../hooks/makeGetAPICall";
+import { makePrivateAPIcall } from "../../utils/axiosInstance";
+import task from "../../api/task";
+import category from "@/app/api/category";
+import { POST, PUT } from "@/app/constants";
+import useFetchData from "../../hooks/makeGetAPICall";
 
 export default function Home() {
-  const [token, setToken] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [columns, setColumns] = useState([]);
-  const [updatedTask, setUpdatedTask] = useState(null);
   const [displayAddInput, setDisplayAddInput] = useState(false);
   const [newList, setNewList] = useState("");
   const router = useRouter();
+  const [fetchData, setFetchData] = useState(null);
   const [filters, setFilters] = useState({
     searchTerm: "",
     tag: "",
@@ -41,21 +37,21 @@ export default function Home() {
   });
   useEffect(() => {
     const token = localStorage.getItem("token");
-    setToken(JSON.parse(localStorage.getItem("token")));
-    if (token) {
-      router.replace("/home");
+    if (!token) {
+      router.replace("/pages/login");
     }
   }, []);
-  const tasksData = makeGetAPICall("tasks/get-tasks");
-  const categoriesData = makeGetAPICall("category/get-categories");
+  const tasksData = useFetchData(task.list, fetchData);
+  const categoriesData = useFetchData(category.list, fetchData);
+
   useEffect(() => {
-  if (tasksData?.task) {
-    setTasks(tasksData.task);
-  }
-  if (categoriesData?.categories) {
-    setColumns(categoriesData.categories);
-  }
-}, [tasksData?.task, categoriesData?.categories]);
+    if (tasksData?.task) {
+      setTasks(tasksData.task);
+    }
+    if (categoriesData?.categories) {
+      setColumns(categoriesData.categories);
+    }
+  }, [tasksData?.task, categoriesData?.categories]);
 
   // const [tasks, setTasks] = useState(() => tasksData?.task || []);
   // const [columns, setColumns] = useState(
@@ -67,24 +63,20 @@ export default function Home() {
   //   if (categoriesData?.categories) setColumns(categoriesData.categories);
   // }, [tasksData?.task, categoriesData?.categories]);
 
-
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
-
   const handleAddList = async (newColumn) => {
     if (newColumn.trim() === "") return;
     await makePrivateAPIcall(
-      "POST",
-      "category/create",
+      POST,
+      category.add,
       {
         category: newColumn,
       },
-      headers
+      (res) => {
+        setFetchData(res);
+      }
     );
-    fetchCategories();
-    setColumns([...columns, newColumn]);
+    // fetchCategories();
+    // setColumns([...columns, newColumn]);
     setNewList("");
     setDisplayAddInput(false);
   };
@@ -115,103 +107,58 @@ export default function Home() {
   const handleDragStart = (e) => {
     setActiveId(e.active.id);
   };
-  const handleDragEnd = async ({ active, over, ...test }) => {
+
+  const handleDragEnd = async ({ active, over }) => {
+    // debugger
     setActiveId(null);
-    if (!over) return;
-
-    console.log(test);
-    console.log("over", over);
-
-    let category = columns.filter((col) => col.id === over.id)?.[0]?.id;
-    if (!category) {
-      category = tasks?.filter((task) => task.id === over.id)?.[0]?.category;
-    }
-
     const activeTask = tasks?.find((task) => task.id === active.id);
-    if (!activeTask) return;
+    if (!over || !activeTask) return;
 
+    const overTask = tasks?.find((task) => task.id === over.id);
+    const overColumn = columns.find((col) => col.id === over.id);
+    const category = overTask?.category || overColumn?.id
     const sameColumnTasks = tasks?.filter((task) => task.category === category);
-    const overTask = sameColumnTasks.find((task) => task.id === over.id);
-
-    console.log("activeTask", activeTask);
-    console.log("overTask", overTask);
-
     const columnIds = columns.map((col) => col.id);
 
-    // Dropping on column
-    if (columnIds.includes(over.id)) {
-      if (activeTask.category !== over.id) {
-        try {
-          const response = await makePrivateAPIcall(
-            "PUT",
-            `tasks/update-task/${activeTask.id}`,
-            {
-              ...activeTask,
-              category: over.id,
-              newSortOrder: sameColumnTasks.length + 1,
-            },
-            headers
-          );
-
-          setTasks((prevTasks) =>
-            prevTasks.map((task) =>
-              task.id === active.id
-                ? {
-                    ...task,
-                    category: over.id,
-                    sortOrder: sameColumnTasks.length + 1,
-                  }
-                : task
-            )
-          );
-
-          console.log(response);
-        } catch (error) {
-          console.error("Failed to update task category:", error);
+    const updateData = async (updateValues) => {
+      await makePrivateAPIcall(
+        PUT,
+        `${task.update}/${activeTask.id}`,
+        {
+          ...activeTask,
+          ...updateValues,
+        },
+        (res) => {
+          setFetchData(res);
         }
-      }
-      return;
-    }
-
-    // Dropping on a task in different column
-    if (overTask && activeTask.category !== overTask.category) {
-      const overTaskIndex = sameColumnTasks.findIndex(
-        (task) => task.id === over.id
       );
+
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === active.id
+            ? {
+                ...task,
+                ...updateValues,
+              }
+            : task
+        )
+      );
+    };
+    // Dropping on column or on a task in different column
+    if (columnIds.includes(category) && activeTask.category !== category) {
+      const overTaskIndex = sameColumnTasks.findIndex(
+        (task) => task.id === overTask?.id
+      );
+      // console.log(overTaskIndex);
       const newSortOrder = overTaskIndex + 1;
-
-      try {
-        const response = await makePrivateAPIcall(
-          "PUT",
-          `tasks/update-task/${activeTask.id}`,
-          {
-            ...activeTask,
-            category: overTask.category,
-            newSortOrder: newSortOrder,
-          },
-          headers
-        );
-
-        setTasks((prevTasks) =>
-          prevTasks
-            .map((task) =>
-              task.id === active.id
-                ? {
-                    ...task,
-                    category: overTask.category,
-                    sortOrder: newSortOrder,
-                  }
-                : task
-            )
-            .sort((a, b) => a.sortOrder - b.sortOrder)
-        );
-      } catch (error) {
-        console.error("Failed to update task category:", error);
-      }
+      updateData(
+        overTask
+          ? { category: overTask.category, newSortOrder: newSortOrder }
+          : { category: over.id, sortOrder: sameColumnTasks.length + 1 }
+      );
       return;
     }
-
-    // Reordering within the same column
+    //reordering in same column
     if (overTask && activeTask.category === overTask.category) {
       const category = activeTask.category;
       const sameColumnTasks = tasks?.filter(
@@ -227,18 +174,18 @@ export default function Home() {
       if (oldIndex !== newIndex) {
         const reordered = arrayMove(sameColumnTasks, oldIndex, newIndex);
         setTasks([...others, ...reordered]);
-
-        try {
-          const response = await makePrivateAPIcall(
-            "PUT",
-            "tasks/update-sortOrder",
-            { taskId: activeTask.id, newIndex, category },
-            headers
-          );
-          console.log(response);
-        } catch (error) {
-          console.error("Failed to update sort order:", error);
-        }
+        await makePrivateAPIcall(
+          PUT,
+          task.updateSortOrder,
+          {
+            taskId: activeTask.id,
+            newIndex,
+            category,
+          },
+          (res) => {
+            setFetchData(res);
+          }
+        );
       }
     }
   };
@@ -254,20 +201,17 @@ export default function Home() {
         <div className="w-full px-4 fixed">
           <FilterBar tags={tags} setFilters={setFilters} filters={filters} />
         </div>
-
-        <div className="w-full flex flex-wrap gap-3 mt-[200px] sm:mt-36 md:mt-24">
+        <div className="w-full flex gap-3 mt-[200px] sm:mt-36 md:mt-24">
           {columns?.map((heading, index) => {
             const columnTasks = filteredTasks.filter(
               (task) => task.category === heading.id
             );
             return (
               <Column
-                updatedTask={updatedTask}
-                setUpdatedTask={setUpdatedTask}
                 key={heading.id}
                 heading={heading}
                 tasks={columnTasks}
-                setTasks={setTasks}
+                setFetchData={setFetchData}
               />
             );
           })}
