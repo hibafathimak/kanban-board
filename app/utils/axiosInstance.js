@@ -1,10 +1,7 @@
 import axios from "axios";
+import Cookies from "js-cookie";
 
-let token = null;
-
-if (typeof window !== "undefined") {
-  token = JSON.parse(localStorage.getItem("token"));
-}
+const token = Cookies.get("token")
 
 const headers = {
   Authorization: `Bearer ${token}`,

@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { axiosInstance } from "../utils/axiosInstance";
 import { GET } from "../constants";
+import Cookies from "js-cookie";
 
 const useFetchData = (url, refetchFlags) => {
   const [data, setData] = useState(null);
   const fetchData = async () => {
-    const token = JSON.parse(localStorage.getItem("token"));
+    // const token = JSON.parse(localStorage.getItem("token"));
+    const token = Cookies.get("token")
     const headers = {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",

@@ -35,12 +35,12 @@ export default function Home() {
     tag: "",
     color: "",
   });
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.replace("/pages/login");
-    }
-  }, []);
+  // useEffect(() => {
+  //   const token = localStorage.getItem("token");
+  //   if (!token) {
+  //     router.replace("/pages/login");
+  //   }
+  // }, []);
   const tasksData = useFetchData(task.list, fetchData);
   const categoriesData = useFetchData(category.list, fetchData);
 
@@ -151,6 +151,7 @@ export default function Home() {
       );
       // console.log(overTaskIndex);
       const newSortOrder = overTaskIndex + 1;
+      //update overtask sortOrder
       updateData(
         overTask
           ? { category: overTask.category, newSortOrder: newSortOrder }

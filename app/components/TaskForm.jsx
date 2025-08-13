@@ -13,6 +13,7 @@ const TaskForm = ({ setDisplayForm, category, taskToEdit, setFetchData }) => {
     category,
     color: "#ffffff",
   });
+  
   const [updatedTask, setUpdatedTask] = useState(null);
 
   const handleAddTask = async (newTask) => {
